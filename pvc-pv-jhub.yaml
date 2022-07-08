@@ -1,0 +1,73 @@
+###### Persistent Volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-<PROJECT_FS>
+  labels:
+    usage: pv-<PROJECT_FS>
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  azureFile:
+    secretName: azure-fileshare-secret
+    shareName: fs-<PROJECT_FS>
+    readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-<USER_FS>
+  labels:
+    usage: pv-<USER_FS>
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  azureFile:
+    secretName: azure-fileshare-secret
+    shareName: fs-<USER_FS>
+    readOnly: false
+###### Persistent Volume Claim
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-<PROJECT_FS>
+  # Set this annotation to NOT let Kubernetes automatically create
+  # a persistent volume for this volume claim.
+  annotations:
+    volume.beta.kubernetes.io/storage-class: ""
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  selector:
+    # To make sure we match the claim with the exact volume, match the label
+    matchLabels:
+      usage: pv-<PROJECT_FS>
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-<USER_FS>
+  # Set this annotation to NOT let Kubernetes automatically create
+  # a persistent volume for this volume claim.
+  annotations:
+    volume.beta.kubernetes.io/storage-class: ""
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  selector:
+    # To make sure we match the claim with the exact volume, match the label
+    matchLabels:
+      usage: pv-<USER_FS>

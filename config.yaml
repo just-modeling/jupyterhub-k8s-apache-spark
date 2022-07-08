@@ -1,0 +1,104 @@
+hub:
+  cookieSecret: 98a089a34637d725efa49d780b2d324428211a81a51a30913985793507f086d8
+  # db:
+  #   type: postgres
+  #   url: <postgresDB-connection-string>
+  #   upgrade: true
+  image: 
+    name: <HUB-IMAGE>
+    tag: latest
+    pullPolicy: 'Always'
+  nodeSelector:
+    dedicate.pool: apppool
+  extraConfig:
+    jupyterlab: |
+      c.JupyterHub.authenticator_class = 'jupyterhub.auth.DummyAuthenticator'
+      c.KubeSpawner.start_timeout = 3600
+    admin_user: |
+      c.JupyterHub.admin_access = True
+      c.Authenticator.admin_users = {'apiuser','ziang'}
+      c.JupyterHub.api_tokens = {'97bbf5d910d0c6d06be880441633953445f6965a78d25b54694f5e26374ffc6a': 'apiuser'}
+    pod_ip: |
+      from kubernetes import client
+      def modify_pod_hook(spawner, pod):
+          pod.spec.containers[0].env.append(client.V1EnvVar("MY_POD_IP", None, client.V1EnvVarSource(None, client.V1ObjectFieldSelector(None, "status.podIP"))))
+          return pod
+      c.KubeSpawner.modify_pod_hook = modify_pod_hook
+    spawner: |
+      from kubespawner import KubeSpawner
+      from jinja2 import Environment, BaseLoader
+      class CustomKubeSpawner(KubeSpawner):
+          async def options_form(self, spawner):
+              p_list = []
+              pull_policy = 'Always'
+              # construct the project space list
+              p_list.append(
+                  {'display_name':'Evolution X 3.2.1', 'slug': 'apache-spark-notebook-3.2.1', 'description': 'Apache Spark Cluster. v3.2.1 with hadoop 3.2 (8 CPUs, 32GB RAM) * 20', 'default': True,
+                    'kubespawner_override': 
+                      {
+                          'image': "<NOTEBOOK-IMAGE>",
+                          'cmd': ['start-notebook.sh'],
+                          'image_pull_policy': pull_policy,
+                          'cpu_limit': 2,
+                          'cpu_guarantee': 0.5,
+                          'mem_limit': '6G',
+                          'mem_guarantee': '2G',
+                          'node_selector': {'dedicate.pool': 'jhubuserpool'},
+                          'volumes': [
+                            {'name': 'project-claim','persistentVolumeClaim': {'claimName': 'pvc-test-jhub-project'}},
+                            {'name': 'user-claim','persistentVolumeClaim': {'claimName': 'pvc-test-jhub-user'}},
+                          ],
+                          'volume_mounts': [
+                            {'name': 'project-claim','mountPath': '/home/jovyan/shared'},
+                            {'name': 'user-claim','mountPath': '/home/jovyan/work'}
+                          ],
+                          'extra_pod_config': {
+                            'service_account_name': 'spark-admin',
+                            'automount_service_account_token': True,
+                            'hostAliases': [{'ip': '127.0.0.1', 'hostnames':['spark.ds.container']}]
+                          }
+                      }
+                  }
+              )
+              self.profile_list = p_list
+              self._profile_list = p_list
+              profile_form_template = Environment(loader=BaseLoader).from_string(self.profile_form_template)
+              return profile_form_template.render(profile_list=p_list)
+      c.JupyterHub.spawner_class = CustomKubeSpawner
+
+cull:
+  enabled: true
+  timeout: 3600
+  every: 600
+  
+scheduling:
+  userScheduler:
+    enabled: true
+    nodeSelector:
+      dedicate.pool: apppool
+  podPriority:
+    enabled: true
+  userPlaceholder:
+    replicas: 0
+  userPods:
+    nodeAffinity:
+      matchNodePurpose: require
+
+prePuller:
+  hook:
+    enabled: true
+    nodeSelector:
+      dedicate.pool: apppool
+  continuous:
+    enabled: true
+
+proxy:
+  traefik:
+    nodeSelector:
+      dedicate.pool: apppool
+  chp:
+    nodeSelector:
+      dedicate.pool: apppool
+  secretToken: 98a089a34637d725efa49d780b2d324428211a81a51a30913985793507f086d9
+  https:
+    enabled: false

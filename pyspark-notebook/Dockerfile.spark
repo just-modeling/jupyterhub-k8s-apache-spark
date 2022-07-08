@@ -1,0 +1,10 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE} as system
+
+RUN mkdir -p /home/jovyan
+
+WORKDIR /home/jovyan
+
+ENV HADOOP_USER_NAME=root
+
+ENTRYPOINT ["/opt/entrypoint.sh"]
