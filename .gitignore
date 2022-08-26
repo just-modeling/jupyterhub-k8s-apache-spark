@@ -130,7 +130,9 @@ dmypy.json
 
 # credentials
 credentials/
-spark-py/
 
 customized-pvc-pv.yaml
 customized-config.yaml
+
+*.tgz
+spark/

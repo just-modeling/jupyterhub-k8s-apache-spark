@@ -12,7 +12,7 @@ spec:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   azureFile:
-    secretName: azure-fileshare-secret
+    secretName: azure-secret
     shareName: fs-<PROJECT_FS>
     readOnly: false
 ---
@@ -29,9 +29,34 @@ spec:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
   azureFile:
-    secretName: azure-fileshare-secret
+    secretName: azure-secret
     shareName: fs-<USER_FS>
     readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-<LAKEHOUSE_BLOB>
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain  # If set as "Delete" container would be removed after pvc deletion
+  storageClassName: blob-fuse
+  mountOptions:
+    - -o allow_other
+    - --file-cache-timeout-in-seconds=120
+  csi:
+    driver: blob.csi.azure.com
+    readOnly: false
+    # make sure this volumeid is unique in the cluster
+    volumeHandle: 982e99a6-bfd9-4b96-b2c2-db013c5d2ea2
+    volumeAttributes:
+      containerName: <LAKEHOUSE_BLOB>
+    nodeStageSecretRef:
+      name: azure-secret
+      namespace: <JHUB_NAMESPACE>
 ###### Persistent Volume Claim
 ---
 apiVersion: v1
@@ -71,3 +96,16 @@ spec:
     # To make sure we match the claim with the exact volume, match the label
     matchLabels:
       usage: pv-<USER_FS>
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-<LAKEHOUSE_BLOB>
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Gi
+  volumeName: pv-<LAKEHOUSE_BLOB>
+  storageClassName: blob-fuse 

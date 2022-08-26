@@ -33,7 +33,7 @@ hub:
               pull_policy = 'Always'
               # construct the project space list
               p_list.append(
-                  {'display_name':'Evolution X 3.2.1', 'slug': 'apache-spark-notebook-3.2.1', 'description': 'Apache Spark Cluster. v3.2.1 with hadoop 3.2 (8 CPUs, 32GB RAM) * 20', 'default': True,
+                  {'display_name':'Workspace Evolution X', 'slug': 'apache-spark-notebook-3.2.1', 'description': 'Apache Spark Cluster. v3.2.1 with hadoop 3.2 (8 CPUs, 32GB RAM) * 20', 'default': True,
                     'kubespawner_override': 
                       {
                           'image': "<NOTEBOOK-IMAGE>",
@@ -47,10 +47,12 @@ hub:
                           'volumes': [
                             {'name': 'project-claim','persistentVolumeClaim': {'claimName': 'pvc-test-jhub-project'}},
                             {'name': 'user-claim','persistentVolumeClaim': {'claimName': 'pvc-test-jhub-user'}},
+                            {'name': 'lakehouse-claim','persistentVolumeClaim': {'claimName': 'pvc-<LAKEHOUSE_BLOB>'}},
                           ],
                           'volume_mounts': [
                             {'name': 'project-claim','mountPath': '/home/jovyan/shared'},
-                            {'name': 'user-claim','mountPath': '/home/jovyan/work'}
+                            {'name': 'user-claim','mountPath': '/home/jovyan/work'},
+                            {'name': 'lakehouse-claim','mountPath': '/home/jovyan/europa-lakehouse'}
                           ],
                           'extra_pod_config': {
                             'service_account_name': 'spark-admin',

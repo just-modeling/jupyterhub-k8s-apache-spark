@@ -9,7 +9,7 @@ Choose the cloud provider and set up the cloud infrastructure. Below is a list o
 
 1. virtual network
 2. kubernetes cluster. 
-3. container registery
+3. container registry
 4. storage account
 5. service principle or cloud service account
 
@@ -56,7 +56,7 @@ In my case, I set up four node pools as following:
 
 * **jhubuserpool**. This node pool mainly host the single-user pod for JupyterHub. When users arrive to login and spawn their own workspace, each of them will have a pod to run their notebook server. These pods are created by JupyterHub so they are assign on this dedicated pool. This pool can autoscale and has more memory and compute resources as it is where user might conduct heavy algorithm computing or data manipulation. When there is no user, this pool can scale down to 0 node automatically. 
 
-* **sparkpool**. This pool is dedicated for spark workers. In this architecture, the single-user pod are cting like the driver which submit Spark jobs to run on worker nodes. This node pool will automaticaly scale up when where is Spark jobs submitted by any user in the jhubuserpool. Each job will have its own numbers of pods that runs the Spark executors.  
+* **sparkpool**. This pool is dedicated for spark workers. In this architecture, the single-user pod are acting like the driver which submit Spark jobs to run on worker nodes. This node pool will automatically scale up when where is Spark jobs submitted by any user in the jhubuserpool. Each job will have its own numbers of pods that runs the Spark executors.
 
 
 # Spark, Delta Lake and Python
@@ -124,7 +124,7 @@ RUN cd /opt/jupyter-sparkui-proxy \
     && pip3 install .
 ```
 
-One can choose to install directly from the PYPI registery but there is a bug in the default version. It is suggested to install it from the original github repostory directly
+One can choose to install directly from the PYPI registry but there is a bug in the default version. It is suggested to install it from the original github repostory directly
 
 ```docker
 RUN pip3 install git+https://github.com/yuvipanda/jupyter-sparkui-proxy.git@master
@@ -164,15 +164,13 @@ conf.set('spark.executor.instances', '6')
 spark = SparkSession.builder.config(conf=conf).getOrCreate()
 ```
 
-One shoud see the sparkpool is scaling up to provide the resource requested above. The machine is these pool are 8 vcore, 32GB. We requested 6 executors which would result in 3 machines spawn up. 
+Run this cell, you should see the sparkpool scaling up to provide the resource requested. The machine is these pool are 8 vcores, 32GB. We requested 6 executors which would result in 3 machines spawn up.
 
 ![spark-autoscale](images/spark-autoscale.png)
 
-When resources are up running, spark session are registered.
-
 ![spark-session](images/spark-session.png)
 
-Now users can access the SparkUI to monitor their jobs. With the easy set up by jupyter proxy, one can access the sparkui by http://<IP-Address>/user/<User-Name>/sparkui
+When resources are up running, spark session are registered. Now we can access the SparkUI to monitor our jobs. With the easy set up by jupyter proxy, one can access the Spark UI by http://<IP-Address>/user/<User-Name>/sparkui
 
 ![spark-ui](images/spark-ui.png)
 

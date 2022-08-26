@@ -1,12 +1,12 @@
 ## Export environment variables
 set -a
-. ./credentials/env
+. ./credentials/env-fssa
 set +a
 
 ## Auth to Azure
 az login
 az account list --refresh --output table
-az account set -s $TENANT_ID
+az account set -s $SUBSCRIPTION_ID
 
 ## Create vnet and subnet for cloud resources
 az network vnet create \
@@ -49,7 +49,7 @@ az aks nodepool add --name systempool \
 --output table
 
 # Delete default nodepool nodepool1
-az aks nodepool delete --name nodepool1 \
+az aks nodepool delete --name jhubuserpool \
 --cluster-name $AKS_NAME \
 --resource-group $RESOURCE_GROUP \
 --output table
@@ -81,7 +81,7 @@ az aks nodepool add --name jhubuserpool \
 --min-count 0 \
 --labels hub.jupyter.org/node-purpose=user dedicate.pool=jhubuserpool \
 --node-taints hub.jupyter.org/dedicated=user:NoSchedule \
---node-vm-size Standard_D2s_v3 \
+--node-vm-size Standard_D4s_v3 \
 --vnet-subnet-id $SUBNET_ID \
 --output table
 
@@ -125,7 +125,7 @@ CLIENT_ID=$(az aks show --resource-group $RESOURCE_GROUP --name $AKS_NAME --quer
 ACR_ID=$(az acr show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query "id" --output tsv)
 az role assignment create --assignee $CLIENT_ID --role acrpull --scope $ACR_ID
 
-# Setup storage account
+## Setup storage account
 az storage account create \
 --name $ADLS_ACCOUNT_NAME \
 --resource-group $RESOURCE_GROUP \
@@ -140,24 +140,30 @@ az storage account create \
 --output table
 
 az storage share-rm create \
---name $USER_FS \
---account-name $ADLS_ACCOUNT_NAME \
+--name fs-$USER_FS \
+--storage-account $ADLS_ACCOUNT_NAME \
 --access-tier "TransactionOptimized" \
 --quota 1024 \
 --output table
 
 az storage share-rm create \
---name $PROJECT_FS \
---account-name $ADLS_ACCOUNT_NAME \
+--name fs-$PROJECT_FS \
+--storage-account $ADLS_ACCOUNT_NAME \
 --access-tier "TransactionOptimized" \
 --quota 1024 \
 --output table
 
 # Deploy PVC
 kubectl create namespace $JHUB_NAMESPACE
-kubectl create secret generic azure-fileshare-secret --from-literal=azurestorageaccountname=$ADLS_ACCOUNT_NAME --from-literal=azurestorageaccountkey=$ADLS_ACCOUNT_KEY -n $JHUB_NAMESPACE
-sed -e "s/<USER_FS>/${USER_FS}/" -e "s/<PROJECT_FS>/${PROJECT_FS}/" pvc-pv-jhub.yaml > customized-pvc-pv.yaml
+kubectl create secret generic azure-secret --from-literal=azurestorageaccountname=$ADLS_ACCOUNT_NAME --from-literal=azurestorageaccountkey=$ADLS_ACCOUNT_KEY --type=Opaque -n $JHUB_NAMESPACE
+sed -e "s/<USER_FS>/${USER_FS}/" -e "s/<PROJECT_FS>/${PROJECT_FS}/" -e "s/<LAKEHOUSE_BLOB>/${LAKEHOUSE_BLOB}/" -e "s/<JHUB_NAMESPACE>/${JHUB_NAMESPACE}/" pvc-pv-jhub.yaml > customized-pvc-pv.yaml
 kubectl apply -f customized-pvc-pv.yaml -n $JHUB_NAMESPACE
+# Install blob-csi-driver
+helm repo add blob-csi-driver https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/charts
+helm install blob-csi-driver blob-csi-driver/blob-csi-driver \
+ --set node.enableBlobfuseProxy=true \
+ --namespace kube-system \
+ --version v1.15.0
 
 # Pull jupyterhub helm chart
 helm repo add jupyterhub https://jupyterhub.github.io/helm-chart/
@@ -167,7 +173,7 @@ helm fetch jupyterhub/jupyterhub --version 1.2.0
 ## Create pullsecret
 ACR_ID=$(az acr show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query "id" --output tsv)
 SP_PASSWD=$(az ad sp create-for-rbac --name http://$SERVICE_PRINCIPLE_ID --scopes $ACR_ID --role acrpull --query password --output tsv)
-SP_APP_ID=$(az ad sp show --id http://$SERVICE_PRINCIPLE_ID --query appId --output tsv)
+SP_APP_ID=$(az ad sp show --id $SERVICE_PRINCIPLE_ID --query appId --output tsv)
 kubectl create secret docker-registry $ACR_PULL_SECRET\
     --namespace $JHUB_NAMESPACE \
     --docker-server=$ACR_NAME.azurecr.io \
@@ -180,12 +186,17 @@ kubectl create clusterrolebinding spark-role-binding --clusterrole cluster-admin
 
 ## Build Images
 az acr login --name $ACR_NAME
+# Build spark base image
+docker build \
+	-f spark-py/Dockerfile \
+	-t justmodeling/spark-delta2.0-py39:v3.2.1 ./spark-py
+docker push justmodeling/spark-delta2.0-py39:v3.2.1
 # build spark worker image
 docker build \
 	--build-arg BASE_IMAGE=$BASE_IMAGE \
 	-f pyspark-notebook/Dockerfile.spark \
-	-t $ACR_NAME.azurecr.io/pyspark-worker:v3.2.1 ./pyspark-notebook
-docker push $ACR_NAME.azurecr.io/pyspark-worker:v3.2.1
+	-t $ACR_NAME.azurecr.io/pyspark-delta2.0-worker:v3.2.1 ./pyspark-notebook
+docker push $ACR_NAME.azurecr.io/pyspark-delta2.0-worker:v3.2.1
 # build pyspark notebook image
 docker build \
 	--build-arg ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME \
@@ -193,20 +204,21 @@ docker build \
 	--build-arg ACR_NAME=$ACR_NAME \
 	--build-arg ACR_PULL_SECRET=$ACR_PULL_SECRET \
 	--build-arg JHUB_NAMESPACE=$JHUB_NAMESPACE \
-	--build-arg WORK_IMAGE=$ACR_NAME.azurecr.io/pyspark-worker:v3.2.1 \
+	--build-arg WORK_IMAGE=$ACR_NAME.azurecr.io/pyspark-delta2.0-worker:v3.2.1 \
 	--build-arg SPARK_NDOE_POOL=$SPARK_NDOE_POOL \
 	--build-arg SERVICE_ACCOUNT=$SERVICE_ACCOUNT \
 	--build-arg USER_FS_PVC=pvc-$USER_FS \
 	--build-arg PROJECT_FS_PVC=pvc-$PROJECT_FS \
+	--build-arg LAKEHOUSE_PVC=pvc-$LAKEHOUSE_BLOB \
 	-f pyspark-notebook/Dockerfile \
-	-t $ACR_NAME.azurecr.io/pyspark-notebook:v3.2.1 ./pyspark-notebook
-docker push $ACR_NAME.azurecr.io/pyspark-notebook:v3.2.1
+	-t $ACR_NAME.azurecr.io/pyspark-delta2.0-notebook:v3.2.1 ./pyspark-notebook
+docker push $ACR_NAME.azurecr.io/pyspark-delta2.0-notebook:v3.2.1
 # build jupyterhub image
 docker build -t $ACR_NAME.azurecr.io/k8s-hub:latest -f jupyter-k8s-hub/Dockerfile ./jupyter-k8s-hub
 docker push $ACR_NAME.azurecr.io/k8s-hub:latest
 
 # Build customized jupyterhub chart
-sed -e "s/<NOTEBOOK-IMAGE>/${ACR_NAME}.azurecr.io\/pyspark-notebook:v3.2.1/" -e "s/<HUB-IMAGE>/${ACR_NAME}.azurecr.io\/k8s-hub/" config.yaml > customized-config.yaml
+sed -e "s/<NOTEBOOK-IMAGE>/${ACR_NAME}.azurecr.io\/pyspark-delta2.0-notebook:v3.2.1/" -e "s/<HUB-IMAGE>/${ACR_NAME}.azurecr.io\/k8s-hub/" -e "s/<LAKEHOUSE_BLOB>/${LAKEHOUSE_BLOB}/" config.yaml > customized-config.yaml
 
 ## Install jupyterhub
 helm upgrade --install spark-jhub jupyterhub/jupyterhub \
