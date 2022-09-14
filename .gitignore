@@ -136,3 +136,4 @@ customized-config.yaml
 
 *.tgz
 spark/
+spark

@@ -2,6 +2,10 @@
 # Distributed under the terms of the Modified BSD License.
 ARG ADLS_ACCOUNT_NAME
 ARG ADLS_ACCOUNT_KEY
+ARG ADLS_ACCOUNT_NAME_1
+ARG ADLS_ACCOUNT_KEY_1
+ARG ADLS_ACCOUNT_NAME_2
+ARG ADLS_ACCOUNT_KEY_2
 ARG ACR_NAME
 ARG WORK_IMAGE
 ARG ACR_PULL_SECRET
@@ -10,7 +14,11 @@ ARG SPARK_NDOE_POOL
 ARG SERVICE_ACCOUNT
 ARG USER_FS_PVC
 ARG PROJECT_FS_PVC
-ARG LAKEHOUSE_PVC
+ARG LAKEHOUSE_DEFAULT
+ARG LAKEHOUSE_A
+ARG LAKEHOUSE_B
+ARG LAKEHOUSE_C
+ARG LAKEHOUSE_D
 
 FROM jupyter/scipy-notebook:python-3.9.13 as system
 
@@ -38,6 +46,10 @@ FROM system
 
 ARG ADLS_ACCOUNT_NAME
 ARG ADLS_ACCOUNT_KEY
+ARG ADLS_ACCOUNT_NAME_1
+ARG ADLS_ACCOUNT_KEY_1
+ARG ADLS_ACCOUNT_NAME_2
+ARG ADLS_ACCOUNT_KEY_2
 ARG ACR_NAME
 ARG WORK_IMAGE
 ARG ACR_PULL_SECRET
@@ -46,7 +58,11 @@ ARG SPARK_NDOE_POOL
 ARG SERVICE_ACCOUNT
 ARG USER_FS_PVC
 ARG PROJECT_FS_PVC
-ARG LAKEHOUSE_PVC
+ARG LAKEHOUSE_DEFAULT
+ARG LAKEHOUSE_A
+ARG LAKEHOUSE_B
+ARG LAKEHOUSE_C
+ARG LAKEHOUSE_D
 
 USER $NB_UID
 ## Install python3 packages
@@ -115,9 +131,29 @@ RUN echo "spark.kubernetes.namespace                                            
     && echo "spark.hadoop.fs.azure.account.key.${ADLS_ACCOUNT_NAME}.dfs.core.windows.net               ${ADLS_ACCOUNT_KEY}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
     && echo "spark.hadoop.fs.azure.account.auth.type.${ADLS_ACCOUNT_NAME}.blob.core.windows.net        SharedKey" >> ${SPARK_HOME}/conf/spark-defaults.conf \
     && echo "spark.hadoop.fs.azure.account.key.${ADLS_ACCOUNT_NAME}.blob.core.windows.net              ${ADLS_ACCOUNT_KEY}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.hadoop.fs.azure.account.auth.type.${ADLS_ACCOUNT_NAME_2}.dfs.core.windows.net         SharedKey" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.hadoop.fs.azure.account.key.${ADLS_ACCOUNT_NAME_2}.dfs.core.windows.net               ${ADLS_ACCOUNT_KEY_2}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.hadoop.fs.azure.account.auth.type.${ADLS_ACCOUNT_NAME_2}.blob.core.windows.net        SharedKey" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.hadoop.fs.azure.account.key.${ADLS_ACCOUNT_NAME_2}.blob.core.windows.net              ${ADLS_ACCOUNT_KEY_2}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.hadoop.fs.azure.account.auth.type.${ADLS_ACCOUNT_NAME_1}.dfs.core.windows.net         SharedKey" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.hadoop.fs.azure.account.key.${ADLS_ACCOUNT_NAME_1}.dfs.core.windows.net               ${ADLS_ACCOUNT_KEY_1}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.hadoop.fs.azure.account.auth.type.${ADLS_ACCOUNT_NAME_1}.blob.core.windows.net        SharedKey" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.hadoop.fs.azure.account.key.${ADLS_ACCOUNT_NAME_1}.blob.core.windows.net              ${ADLS_ACCOUNT_KEY_1}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
     && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.user-claim.options.claimName      ${USER_FS_PVC}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
     && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.project-claim.options.claimName   ${PROJECT_FS_PVC}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
-    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-claim.options.claimName ${LAKEHOUSE_PVC}" >> ${SPARK_HOME}/conf/spark-defaults.conf
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-default-claim.options.claimName ${LAKEHOUSE_DEFAULT}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-a-claim.options.claimName ${LAKEHOUSE_A}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-b-claim.options.claimName ${LAKEHOUSE_B}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-c-claim.options.claimName ${LAKEHOUSE_C}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-d-claim.options.claimName ${LAKEHOUSE_D}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.user-claim.mount.path             /home/jovyan/work" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.project-claim.mount.path          /home/jovyan/shared" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-default-claim.mount.path        /home/jovyan/dbfs/mnt/lakehouse/${LAKEHOUSE_DEFAULT}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-a-claim.mount.path        /home/jovyan/dbfs/mnt/lakehouse/${LAKEHOUSE_A}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-b-claim.mount.path        /home/jovyan/dbfs/mnt/lakehouse/${LAKEHOUSE_B}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-c-claim.mount.path        /home/jovyan/dbfs/mnt/lakehouse/${LAKEHOUSE_C}" >> ${SPARK_HOME}/conf/spark-defaults.conf \
+    && echo "spark.kubernetes.executor.volumes.persistentVolumeClaim.lakehouse-d-claim.mount.path        /home/jovyan/dbfs/mnt/lakehouse/${LAKEHOUSE_D}" >> ${SPARK_HOME}/conf/spark-defaults.conf
+    
 
 USER $NB_UID
 

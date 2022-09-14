@@ -36,7 +36,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: pv-<LAKEHOUSE_BLOB>
+  name: pv-<LAKEHOUSE_DEFAULT>
 spec:
   capacity:
     storage: 200Gi
@@ -53,9 +53,109 @@ spec:
     # make sure this volumeid is unique in the cluster
     volumeHandle: 982e99a6-bfd9-4b96-b2c2-db013c5d2ea2
     volumeAttributes:
-      containerName: <LAKEHOUSE_BLOB>
+      containerName: <LAKEHOUSE_DEFAULT>
     nodeStageSecretRef:
       name: azure-secret
+      namespace: <JHUB_NAMESPACE>
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-<LAKEHOUSE_A>
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain  # If set as "Delete" container would be removed after pvc deletion
+  storageClassName: blob-fuse
+  mountOptions:
+    - -o allow_other
+    - --file-cache-timeout-in-seconds=120
+  csi:
+    driver: blob.csi.azure.com
+    readOnly: false
+    # make sure this volumeid is unique in the cluster
+    volumeHandle: 4b96-b2c2-db982e99a6-bfd9-013c5d2ea2
+    volumeAttributes:
+      containerName: <LAKEHOUSE_A>
+    nodeStageSecretRef:
+      name: azure-secret-1
+      namespace: <JHUB_NAMESPACE>
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-<LAKEHOUSE_B>
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain  # If set as "Delete" container would be removed after pvc deletion
+  storageClassName: blob-fuse
+  mountOptions:
+    - -o allow_other
+    - --file-cache-timeout-in-seconds=120
+  csi:
+    driver: blob.csi.azure.com
+    readOnly: false
+    # make sure this volumeid is unique in the cluster
+    volumeHandle: 2c2-db013c5d2ea2982e99a6-bfd9-4b96-b
+    volumeAttributes:
+      containerName: <LAKEHOUSE_B>
+    nodeStageSecretRef:
+      name: azure-secret-1
+      namespace: <JHUB_NAMESPACE>
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-<LAKEHOUSE_C>
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain  # If set as "Delete" container would be removed after pvc deletion
+  storageClassName: blob-fuse
+  mountOptions:
+    - -o allow_other
+    - --file-cache-timeout-in-seconds=120
+  csi:
+    driver: blob.csi.azure.com
+    readOnly: false
+    # make sure this volumeid is unique in the cluster
+    volumeHandle: 9a6-bfd9-4b96-b982e92c2-db013c5d2ea2
+    volumeAttributes:
+      containerName: <LAKEHOUSE_C>
+    nodeStageSecretRef:
+      name: azure-secret-2
+      namespace: <JHUB_NAMESPACE>
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-<LAKEHOUSE_D>
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain  # If set as "Delete" container would be removed after pvc deletion
+  storageClassName: blob-fuse
+  mountOptions:
+    - -o allow_other
+    - --file-cache-timeout-in-seconds=120
+  csi:
+    driver: blob.csi.azure.com
+    readOnly: false
+    # make sure this volumeid is unique in the cluster
+    volumeHandle: c5d2ea2982e99a6-bfd9-4b96-b2c2-db013
+    volumeAttributes:
+      containerName: <LAKEHOUSE_D>
+    nodeStageSecretRef:
+      name: azure-secret-2
       namespace: <JHUB_NAMESPACE>
 ###### Persistent Volume Claim
 ---
@@ -100,12 +200,64 @@ spec:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: pvc-<LAKEHOUSE_BLOB>
+  name: pvc-<LAKEHOUSE_DEFAULT>
 spec:
   accessModes:
     - ReadWriteMany
   resources:
     requests:
       storage: 200Gi
-  volumeName: pv-<LAKEHOUSE_BLOB>
+  volumeName: pv-<LAKEHOUSE_DEFAULT>
+  storageClassName: blob-fuse 
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-<LAKEHOUSE_A>
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Gi
+  volumeName: pv-<LAKEHOUSE_A>
+  storageClassName: blob-fuse 
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-<LAKEHOUSE_B>
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Gi
+  volumeName: pv-<LAKEHOUSE_B>
+  storageClassName: blob-fuse 
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-<LAKEHOUSE_C>
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Gi
+  volumeName: pv-<LAKEHOUSE_C>
+  storageClassName: blob-fuse 
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-<LAKEHOUSE_D>
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Gi
+  volumeName: pv-<LAKEHOUSE_D>
   storageClassName: blob-fuse 

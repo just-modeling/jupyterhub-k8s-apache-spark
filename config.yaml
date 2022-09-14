@@ -33,7 +33,7 @@ hub:
               pull_policy = 'Always'
               # construct the project space list
               p_list.append(
-                  {'display_name':'Workspace Evolution X', 'slug': 'apache-spark-notebook-3.2.1', 'description': 'Apache Spark Cluster. v3.2.1 with hadoop 3.2 (8 CPUs, 32GB RAM) * 20', 'default': True,
+                  {'display_name':'Co-Op Project Europa', 'slug': 'apache-spark-notebook-3.2.1', 'description': 'Apache Spark Cluster. v3.2.1 with hadoop 3.2 (8 CPUs, 32GB RAM) * 20', 'default': True,
                     'kubespawner_override': 
                       {
                           'image': "<NOTEBOOK-IMAGE>",
@@ -47,12 +47,51 @@ hub:
                           'volumes': [
                             {'name': 'project-claim','persistentVolumeClaim': {'claimName': 'pvc-test-jhub-project'}},
                             {'name': 'user-claim','persistentVolumeClaim': {'claimName': 'pvc-test-jhub-user'}},
-                            {'name': 'lakehouse-claim','persistentVolumeClaim': {'claimName': 'pvc-<LAKEHOUSE_BLOB>'}},
+                            {'name': 'lakehouse-default-claim','persistentVolumeClaim': {'claimName': 'pvc-<LAKEHOUSE_DEFAULT>'}},
+                            {'name': 'lakehouse-claim-a','persistentVolumeClaim': {'claimName': 'pvc-<LAKEHOUSE_A>'}},
+                            {'name': 'lakehouse-claim-c','persistentVolumeClaim': {'claimName': 'pvc-<LAKEHOUSE_C>'}}
                           ],
                           'volume_mounts': [
                             {'name': 'project-claim','mountPath': '/home/jovyan/shared'},
                             {'name': 'user-claim','mountPath': '/home/jovyan/work'},
-                            {'name': 'lakehouse-claim','mountPath': '/home/jovyan/europa-lakehouse'}
+                            {'name': 'lakehouse-default-claim','mountPath': '/home/jovyan/dbfs/mnt/lakehouse/default'},
+                            {'name': 'lakehouse-claim-a','mountPath': '/home/jovyan/dbfs/mnt/lakehouse/<LAKEHOUSE_A>'},
+                            {'name': 'lakehouse-claim-c','mountPath': '/home/jovyan/dbfs/mnt/lakehouse/<LAKEHOUSE_C>'}
+                          ],
+                          'extra_pod_config': {
+                            'service_account_name': 'spark-admin',
+                            'automount_service_account_token': True,
+                            'hostAliases': [{'ip': '127.0.0.1', 'hostnames':['spark.ds.container']}]
+                          }
+                      }
+                  }
+              )
+
+              p_list.append(
+                  {'display_name':'Internal Project Evoluation X', 'slug': 'apache-spark-notebook-3.2.1', 'description': 'Apache Spark Cluster. v3.2.1 with hadoop 3.2 (8 CPUs, 32GB RAM) * 20', 'default': True,
+                    'kubespawner_override': 
+                      {
+                          'image': "<NOTEBOOK-IMAGE>",
+                          'cmd': ['start-notebook.sh'],
+                          'image_pull_policy': pull_policy,
+                          'cpu_limit': 2,
+                          'cpu_guarantee': 0.5,
+                          'mem_limit': '6G',
+                          'mem_guarantee': '2G',
+                          'node_selector': {'dedicate.pool': 'jhubuserpool'},
+                          'volumes': [
+                            {'name': 'project-claim','persistentVolumeClaim': {'claimName': 'pvc-test-jhub-project'}},
+                            {'name': 'user-claim','persistentVolumeClaim': {'claimName': 'pvc-test-jhub-user'}},
+                            {'name': 'lakehouse-default-claim','persistentVolumeClaim': {'claimName': 'pvc-<LAKEHOUSE_DEFAULT>'}},
+                            {'name': 'lakehouse-claim-a','persistentVolumeClaim': {'claimName': 'pvc-<LAKEHOUSE_A>'}},
+                            {'name': 'lakehouse-claim-b','persistentVolumeClaim': {'claimName': 'pvc-<LAKEHOUSE_B>'}}
+                          ],
+                          'volume_mounts': [
+                            {'name': 'project-claim','mountPath': '/home/jovyan/shared'},
+                            {'name': 'user-claim','mountPath': '/home/jovyan/work'},
+                            {'name': 'lakehouse-default-claim','mountPath': '/home/jovyan/dbfs/mnt/lakehouse/default'},
+                            {'name': 'lakehouse-claim-a','mountPath': '/home/jovyan/dbfs/mnt/lakehouse/<LAKEHOUSE_A>'},
+                            {'name': 'lakehouse-claim-b','mountPath': '/home/jovyan/dbfs/mnt/lakehouse/<LAKEHOUSE_B>'}
                           ],
                           'extra_pod_config': {
                             'service_account_name': 'spark-admin',

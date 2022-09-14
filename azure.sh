@@ -1,6 +1,6 @@
 ## Export environment variables
 set -a
-. ./credentials/env-fssa
+. ./credentials/env-ecae
 set +a
 
 ## Auth to Azure
@@ -11,7 +11,7 @@ az account set -s $SUBSCRIPTION_ID
 ## Create vnet and subnet for cloud resources
 az network vnet create \
     --resource-group $RESOURCE_GROUP \
-    --name $VNET_NAME\
+    --name $VNET_NAME \
     --address-prefixes 10.1.0.0/16 \
     --subnet-name kubesubnet \
     --subnet-prefix 10.1.0.0/24
@@ -49,7 +49,7 @@ az aks nodepool add --name systempool \
 --output table
 
 # Delete default nodepool nodepool1
-az aks nodepool delete --name jhubuserpool \
+az aks nodepool delete --name nodepool1 \
 --cluster-name $AKS_NAME \
 --resource-group $RESOURCE_GROUP \
 --output table
@@ -153,17 +153,29 @@ az storage share-rm create \
 --quota 1024 \
 --output table
 
-# Deploy PVC
 kubectl create namespace $JHUB_NAMESPACE
-kubectl create secret generic azure-secret --from-literal=azurestorageaccountname=$ADLS_ACCOUNT_NAME --from-literal=azurestorageaccountkey=$ADLS_ACCOUNT_KEY --type=Opaque -n $JHUB_NAMESPACE
-sed -e "s/<USER_FS>/${USER_FS}/" -e "s/<PROJECT_FS>/${PROJECT_FS}/" -e "s/<LAKEHOUSE_BLOB>/${LAKEHOUSE_BLOB}/" -e "s/<JHUB_NAMESPACE>/${JHUB_NAMESPACE}/" pvc-pv-jhub.yaml > customized-pvc-pv.yaml
-kubectl apply -f customized-pvc-pv.yaml -n $JHUB_NAMESPACE
+
+## Deploy PVC
 # Install blob-csi-driver
 helm repo add blob-csi-driver https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/charts
 helm install blob-csi-driver blob-csi-driver/blob-csi-driver \
  --set node.enableBlobfuseProxy=true \
  --namespace kube-system \
  --version v1.15.0
+kubectl create secret generic azure-secret --from-literal=azurestorageaccountname=$ADLS_ACCOUNT_NAME --from-literal=azurestorageaccountkey=$ADLS_ACCOUNT_KEY --type=Opaque -n $JHUB_NAMESPACE
+kubectl create secret generic azure-secret-2 --from-literal=azurestorageaccountname=$ADLS_ACCOUNT_NAME_2 --from-literal=azurestorageaccountkey=$ADLS_ACCOUNT_KEY_2 --type=Opaque -n $JHUB_NAMESPACE
+kubectl create secret generic azure-secret-1 --from-literal=azurestorageaccountname=$ADLS_ACCOUNT_NAME_1 --from-literal=azurestorageaccountkey=$ADLS_ACCOUNT_KEY_1 --type=Opaque -n $JHUB_NAMESPACE
+
+sed -e "s/<USER_FS>/${USER_FS}/" \
+	-e "s/<PROJECT_FS>/${PROJECT_FS}/" \
+	-e "s/<LAKEHOUSE_DEFAULT>/${LAKEHOUSE_DEFAULT}/" \
+	-e "s/<LAKEHOUSE_A>/${LAKEHOUSE_A}/" \
+	-e "s/<LAKEHOUSE_B>/${LAKEHOUSE_B}/" \
+	-e "s/<LAKEHOUSE_C>/${LAKEHOUSE_C}/" \
+	-e "s/<LAKEHOUSE_D>/${LAKEHOUSE_D}/" \
+	-e "s/<JHUB_NAMESPACE>/${JHUB_NAMESPACE}/" \
+	pvc-pv-jhub.yaml > customized-pvc-pv.yaml
+kubectl apply -f customized-pvc-pv.yaml -n $JHUB_NAMESPACE
 
 # Pull jupyterhub helm chart
 helm repo add jupyterhub https://jupyterhub.github.io/helm-chart/
@@ -201,6 +213,10 @@ docker push $ACR_NAME.azurecr.io/pyspark-delta2.0-worker:v3.2.1
 docker build \
 	--build-arg ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME \
 	--build-arg ADLS_ACCOUNT_KEY=$ADLS_ACCOUNT_KEY \
+	--build-arg ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME_1 \
+	--build-arg ADLS_ACCOUNT_KEY=$ADLS_ACCOUNT_KEY_1 \
+	--build-arg ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME_2 \
+	--build-arg ADLS_ACCOUNT_KEY=$ADLS_ACCOUNT_KEY_2 \
 	--build-arg ACR_NAME=$ACR_NAME \
 	--build-arg ACR_PULL_SECRET=$ACR_PULL_SECRET \
 	--build-arg JHUB_NAMESPACE=$JHUB_NAMESPACE \
@@ -209,7 +225,11 @@ docker build \
 	--build-arg SERVICE_ACCOUNT=$SERVICE_ACCOUNT \
 	--build-arg USER_FS_PVC=pvc-$USER_FS \
 	--build-arg PROJECT_FS_PVC=pvc-$PROJECT_FS \
-	--build-arg LAKEHOUSE_PVC=pvc-$LAKEHOUSE_BLOB \
+	--build-arg LAKEHOUSE_DEFAULT=pvc-$LAKEHOUSE_DEFAULT \
+	--build-arg LAKEHOUSE_A=pvc-$LAKEHOUSE_A \
+	--build-arg LAKEHOUSE_B=pvc-$LAKEHOUSE_B \
+	--build-arg LAKEHOUSE_C=pvc-$LAKEHOUSE_C \
+	--build-arg LAKEHOUSE_D=pvc-$LAKEHOUSE_D \
 	-f pyspark-notebook/Dockerfile \
 	-t $ACR_NAME.azurecr.io/pyspark-delta2.0-notebook:v3.2.1 ./pyspark-notebook
 docker push $ACR_NAME.azurecr.io/pyspark-delta2.0-notebook:v3.2.1
@@ -218,7 +238,14 @@ docker build -t $ACR_NAME.azurecr.io/k8s-hub:latest -f jupyter-k8s-hub/Dockerfil
 docker push $ACR_NAME.azurecr.io/k8s-hub:latest
 
 # Build customized jupyterhub chart
-sed -e "s/<NOTEBOOK-IMAGE>/${ACR_NAME}.azurecr.io\/pyspark-delta2.0-notebook:v3.2.1/" -e "s/<HUB-IMAGE>/${ACR_NAME}.azurecr.io\/k8s-hub/" -e "s/<LAKEHOUSE_BLOB>/${LAKEHOUSE_BLOB}/" config.yaml > customized-config.yaml
+sed -e "s/<NOTEBOOK-IMAGE>/${ACR_NAME}.azurecr.io\/pyspark-delta2.0-notebook:v3.2.1/" \
+	-e "s/<HUB-IMAGE>/${ACR_NAME}.azurecr.io\/k8s-hub/" \
+	-e "s/<LAKEHOUSE_DEFAULT>/${LAKEHOUSE_DEFAULT}/" \
+	-e "s/<LAKEHOUSE_A>/${LAKEHOUSE_A}/" \
+	-e "s/<LAKEHOUSE_B>/${LAKEHOUSE_B}/" \
+	-e "s/<LAKEHOUSE_C>/${LAKEHOUSE_C}/" \
+	-e "s/<LAKEHOUSE_D>/${LAKEHOUSE_D}/" \
+	config.yaml > customized-config.yaml
 
 ## Install jupyterhub
 helm upgrade --install spark-jhub jupyterhub/jupyterhub \

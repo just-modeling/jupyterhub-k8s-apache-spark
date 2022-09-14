@@ -117,12 +117,14 @@ ADD https://repo1.maven.org/maven2/io/delta/delta-storage/${DELTA_LAKE_VERSION}/
 RUN chmod 644 /opt/spark/jars/delta-core_${SCALA_VERSION}-${DELTA_LAKE_VERSION}.jar
 RUN chmod 644 /opt/spark/jars/delta-storage-${DELTA_LAKE_VERSION}.jar
 
-## Install Hive Metastore
-ENV HIVE_METASTORE 2.3.9
-ADD https://repo1.maven.org/maven2/org/apache/hive/hive-metastore/${HIVE_METASTORE}/hive-metastore-${HIVE_METASTORE}.jar /opt/spark/jars
-ADD https://repo1.maven.org/maven2/org/mariadb/jdbc/mariadb-java-client/3.0.7/mariadb-java-client-3.0.7.jar /opt/spark/jars
-RUN chmod 644 /opt/spark/jars/hive-metastore-${HIVE_METASTORE}.jar
-RUN chmod 644 /opt/spark/jars/mariadb-java-client-3.0.7.jar
+## Install MSSQL java client
+ENV MSSQL 1.2.0
+ADD https://repo1.maven.org/maven2/com/microsoft/azure/spark-mssql-connector_2.12/${MSSQL}/spark-mssql-connector_2.12-${MSSQL}.jar /opt/spark/jars
+# ADD https://repo1.maven.org/maven2/org/apache/hive/hive-metastore/${HIVE_METASTORE}/hive-metastore-${HIVE_METASTORE}.jar /opt/spark/jars
+# ADD https://repo1.maven.org/maven2/org/mariadb/jdbc/mariadb-java-client/${MARIADB}/mariadb-java-client-${MARIADB}.jar /opt/spark/jars
+RUN chmod 644 /opt/spark/jars/spark-mssql-connector_2.12-${MSSQL}.jar
+# RUN chmod 644 /opt/spark/jars/hive-metastore-${HIVE_METASTORE}.jar
+# RUN chmod 644 /opt/spark/jars/mariadb-java-client-${MARIADB}.jar
 
 ## Install python3 packages
 RUN mamba install --quiet --yes \
